@@ -5,6 +5,8 @@ To view a copy of this license, visit <https://creativecommons.org/publicdomain/
 from matplotlib import pyplot as plt
 from numpy import linspace, meshgrid, hypot, exp
 
+from colormap import colormap
+
 a = -5
 b = 1
 r = .6
@@ -23,6 +25,6 @@ image = (a*X + b*Y -
          depth*exp(-(hypot(X - x0, Y - y0)/r)**power) -
          depth2*exp(-(hypot(X - x02, Y - y02)/r2)**power))
 
-plt.imshow(image.T)
-plt.contour(image.T, colors="k")
+plt.imshow(image.T, cmap=colormap)
+plt.contour(image.T, colors="w")
 plt.show()

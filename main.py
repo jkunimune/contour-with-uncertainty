@@ -44,17 +44,24 @@ def main():
 	)
 	axs = ravel(axs)
 	for i in range(9):
-		axs[i].imshow(image[i].T, cmap=colormap)
+		plot_image(axs[i], image[i], colormap=colormap)
 		axs[i].contour(image[i].T, colors="w")
-		axs[i].get_xaxis().set_visible(False)
-		axs[i].get_yaxis().set_visible(False)
+	fig.tight_layout()
 
 	# plot a contour with uncertainty
 	fig, ax = plt.subplots(facecolor="none")
-	plt.imshow(mean(image, axis=0).T)
+	plot_image(ax, mean(image, axis=0), colormap=colormap)
 	plot_contour(ax, image, color="w", level=0)
+	fig.tight_layout()
 
 	plt.show()
+
+def plot_image(ax, image, colormap):
+	ax.imshow(image.T, cmap=colormap, origin="lower")
+	ax.set_xlim(0, image.shape[0] - 1)
+	ax.set_ylim(0, image.shape[1] - 1)
+	ax.xaxis.set_visible(False)
+	ax.yaxis.set_visible(False)
 
 def plot_contour(ax, images, level, color, credibility=.90, opacity=1):
 	outer_bound = measure.find_contours(quantile(images, 1/2 - credibility/2, axis=0), level)

@@ -23,18 +23,18 @@ def main():
 	b = rng.normal(1, .1, (N, 1, 1))
 	r = rng.normal(.6, .01, (N, 1, 1))
 	depth = rng.normal(6, .1, (N, 1, 1))
-	x0 = rng.normal(-.3, .02, (N, 1, 1))
-	y0 = rng.normal(-.1, .02, (N, 1, 1))
+	x0 = rng.normal(-.3, .01, (N, 1, 1))
+	y0 = rng.normal(-.1, .01, (N, 1, 1))
 	power = 3
 	r2 = rng.normal(.2, .01, (N, 1, 1))
 	depth2 = rng.uniform(0, 2**(1/2), (N, 1, 1))**2
-	x02 = rng.normal(-.2, .02, (N, 1, 1))
-	y02 = rng.normal(.5, .02, (N, 1, 1))
+	x02 = rng.normal(-.2, .01, (N, 1, 1))
+	y02 = rng.normal(.5, .01, (N, 1, 1))
 
-	base_noise = 0.3*perlin_noise((1, M, M), [
+	base_noise = 0.2*perlin_noise((1, M, M), [
 		(1, 2**-0), (2, 2**-0), (4, 2**-2), (8, 2**-4), (16, 2**-6), (32, 2**-8),
 	])
-	variant_noise = 0.6*perlin_noise((1, M, M), [
+	variant_noise = 0.4*perlin_noise((1, M, M), [
 		(1, 2**-0), (2, 2**-0), (4, 2**-1), (8, 2**-2), (16, 2**-3), (32, 2**-4),
 	])
 

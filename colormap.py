@@ -4,7 +4,8 @@ To view a copy of this license,  visit <https://creativecommons.org/publicdomain
 """
 from matplotlib.colors import ListedColormap
 
-cm_data = [[1.84356466e-03, 9.82950371e-04, 1.69662709e-03], 
+cm_data = [[0, 0, 0],
+           [1.84356466e-03, 9.82950371e-04, 1.69662709e-03],
            [2.76838601e-03, 1.84538391e-03, 2.83272310e-03], 
            [3.84426537e-03, 2.93707099e-03, 4.22011824e-03], 
            [5.06438084e-03, 4.24865110e-03, 5.85880388e-03], 

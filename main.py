@@ -2,6 +2,7 @@
 This work by Justin Kunimune is marked with CC0 1.0 Universal.
 To view a copy of this license, visit <https://creativecommons.org/publicdomain/zero/1.0>
 """
+import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.patches import PathPatch
 from matplotlib.path import Path
@@ -28,7 +29,7 @@ def main():
 	r2 = rng.normal(.2, .01, (N, 1, 1))
 	depth2 = rng.uniform(0, 2**(1/2), (N, 1, 1))**2
 	x02 = rng.normal(-.2, .02, (N, 1, 1))
-	y02 = rng.normal(.4, .02, (N, 1, 1))
+	y02 = rng.normal(.5, .02, (N, 1, 1))
 
 	base_noise = 0.3*perlin_noise((1, M, M), [
 		(1, 2**-0), (2, 2**-0), (4, 2**-2), (8, 2**-4), (16, 2**-6), (32, 2**-8),
@@ -56,13 +57,13 @@ def main():
 	axs = ravel(axs)
 	for i in range(9):
 		plot_image(axs[i], image[i], colormap=colormap, vmin=-5.5, vmax=5)
-		axs[i].contour(image[i].T, colors="w")
+		axs[i].contour(image[i].T, colors="w", levels=[-2.5])
 	fig.tight_layout()
 
 	# plot a contour with uncertainty
 	fig, ax = plt.subplots(facecolor="none")
 	plot_image(ax, mean(image, axis=0), colormap=colormap, vmin=-5.5, vmax=5)
-	plot_contour(ax, image, color="w", level=0)
+	plot_contour(ax, image, color="w", level=-2.6)
 	fig.tight_layout()
 
 	plt.show()
@@ -77,19 +78,31 @@ def plot_image(ax, image, *, colormap, vmin, vmax):
 
 
 def plot_contour(ax, images, level, color, credibility=.90, opacity=1):
+	# calculate the bounds of the contour band
 	outer_bound = measure.find_contours(quantile(images, 1/2 - credibility/2, axis=0), level)
 	inner_bound = measure.find_contours(quantile(images, 1/2 + credibility/2, axis=0), level)
+	# convert the bands into Path objects
 	path_sections = outer_bound + [loop[::-1, :] for loop in inner_bound]
-	path_points = []
-	path_commands = []
-	for loop in path_sections:
-		loop_x = loop[:, 0]
-		loop_y = loop[:, 1]
-		path_points += list(zip(loop_x, loop_y))
-		path_commands += [Path.LINETO]*len(loop)
-	path_commands[0] = Path.MOVETO
-	if len(path_points) > 0:
-		ax.add_patch(PathPatch(Path(path_points, path_commands),
+	paths = []
+	for section in path_sections:
+		path = []
+		for i in range(len(section)):
+			path.append((Path.MOVETO if i == 0 else Path.LINETO, section[i, :]))
+		paths.append(path)
+	# connect any that are open into a single mass
+	fused_paths = [[]]
+	for path in paths:
+		closed = np.array_equal(path[0][1], path[-1][1])
+		if closed:
+			fused_paths.append(path)
+		else:
+			if len(fused_paths[0]) > 0:
+				path[0] = (Path.LINETO, path[0][1])
+			fused_paths[0] += path
+	path = [segment for path in fused_paths for segment in path]
+	if len(path) > 0:
+		commands, points = zip(*path)
+		ax.add_patch(PathPatch(Path(points, commands),
 		                       facecolor=color,
 		                       alpha=opacity,
 		                       edgecolor="none"))

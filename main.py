@@ -5,15 +5,18 @@ To view a copy of this license, visit <https://creativecommons.org/publicdomain/
 from matplotlib import pyplot as plt
 from matplotlib.patches import PathPatch
 from matplotlib.path import Path
-from numpy import linspace, meshgrid, hypot, exp, random, newaxis, ravel, mean, quantile
+from numpy import linspace, hypot, exp, random, newaxis, ravel, mean, quantile, pi, minimum, floor, cos, sin, sqrt, \
+	zeros, arange, meshgrid, stack
 from skimage import measure
 
 from colormap import colormap
 
-def main():
-	rng = random.default_rng(0)
+rng = random.default_rng(0)
 
+
+def main():
 	N = 10_000
+	M = 101
 
 	a = rng.normal(-5, .1, (N, 1, 1))
 	b = rng.normal(1, .1, (N, 1, 1))
@@ -27,13 +30,21 @@ def main():
 	x02 = rng.normal(-.2, .02, (N, 1, 1))
 	y02 = rng.normal(.4, .02, (N, 1, 1))
 
-	x = y = linspace(-1, 1, 51)
+	base_noise = 0.3*perlin_noise((1, M, M), [
+		(1, 2**-0), (2, 2**-0), (4, 2**-2), (8, 2**-4), (16, 2**-6), (32, 2**-8),
+	])
+	variant_noise = 0.6*perlin_noise((1, M, M), [
+		(1, 2**-0), (2, 2**-0), (4, 2**-1), (8, 2**-2), (16, 2**-3), (32, 2**-4),
+	])
+
+	x = y = linspace(-1, 1, M)
 	x = x[newaxis, :, newaxis]
 	y = y[newaxis, newaxis, :]
 
 	image = (a*x + b*y -
 	         depth*exp(-(hypot(x - x0, y - y0)/r)**power) -
-	         depth2*exp(-(hypot(x - x02, y - y02)/r2)**power))
+	         depth2*exp(-(hypot(x - x02, y - y02)/r2)**power) +
+	         base_noise + variant_noise)
 
 	# plot a few samples from the distribution
 	fig, axs = plt.subplots(
@@ -56,12 +67,14 @@ def main():
 
 	plt.show()
 
+
 def plot_image(ax, image, colormap):
 	ax.imshow(image.T, cmap=colormap, origin="lower")
 	ax.set_xlim(0, image.shape[0] - 1)
 	ax.set_ylim(0, image.shape[1] - 1)
 	ax.xaxis.set_visible(False)
 	ax.yaxis.set_visible(False)
+
 
 def plot_contour(ax, images, level, color, credibility=.90, opacity=1):
 	outer_bound = measure.find_contours(quantile(images, 1/2 - credibility/2, axis=0), level)
@@ -80,6 +93,46 @@ def plot_contour(ax, images, level, color, credibility=.90, opacity=1):
 		                       facecolor=color,
 		                       alpha=opacity,
 		                       edgecolor="none"))
+
+
+def perlin_noise(shape, layers):
+	"""
+	this function is copied and modified from Pierre Vigier (licensed under MIT license):
+	https://github.com/pvigier/perlin-numpy/tree/master
+	"""
+	assert shape[-2] == shape[-1]
+	total = zeros(shape)
+	for frequency, amplitude in layers:
+		period = (shape[-1] - 1)/frequency
+		x = y = (arange(shape[-1])/period)  # a cartesian system in units of period
+		X, Y = meshgrid(x, y, indexing="ij")
+		i = minimum(floor(X), frequency - 1).astype(int)
+		j = minimum(floor(Y), frequency - 1).astype(int)
+		dX, dY = X - i, Y - j  # relative coordinates for each cell
+		# Gradients
+		angles = rng.uniform(0, 2*pi, shape[:-2] + (frequency + 1, frequency + 1))
+		gradients = stack((cos(angles), sin(angles)), axis=-1)
+		g00 = gradients[..., i, j, :]
+		g10 = gradients[..., i + 1, j, :]
+		g01 = gradients[..., i, j + 1, :]
+		g11 = gradients[..., i + 1, j + 1, :]
+		# Ramps
+		n00 = dX*g00[..., 0] + dY*g00[..., 1]
+		n10 = (dX - 1)*g10[..., 0] + dY*g10[..., 1]
+		n01 = dX*g01[..., 0] + (dY - 1)*g01[..., 1]
+		n11 = (dX - 1)*g11[..., 0] + (dY - 1)*g11[..., 1]
+		# Interpolation
+		cx, cy = interpolant(dX), interpolant(dY)
+		n0 = n00*(1 - cx) + cx*n10
+		n1 = n01*(1 - cx) + cx*n11
+		total += amplitude*sqrt(2)*((1 - cy)*n0 + cy*n1)
+
+	return total
+
+
+def interpolant(t):
+	return t*t*t*(t*(t*6 - 15) + 10)
+
 
 if __name__ == "__main__":
 	main()

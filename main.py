@@ -4,10 +4,11 @@ To view a copy of this license, visit <https://creativecommons.org/publicdomain/
 """
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib.colors import Normalize
 from matplotlib.patches import PathPatch
 from matplotlib.path import Path
 from numpy import linspace, hypot, exp, random, newaxis, ravel, mean, quantile, pi, minimum, floor, cos, sin, sqrt, \
-	zeros, arange, meshgrid, stack
+	zeros, arange, meshgrid, stack, histogram, full
 from skimage import measure
 
 from colormap import colormap
@@ -47,6 +48,35 @@ def main():
 	         depth2*exp(-(hypot(x - x02, y - y02)/r2)**power) +
 	         base_noise + variant_noise)
 
+	# plot the mean of the distribution
+	fig, ax = plt.subplots(facecolor="none")
+	plot_image(ax, mean(image, axis=0))
+	plot_contour(ax, image, level=-2.6)
+	fig.tight_layout()
+
+	# plot a histogram for every single pixel (not every single pixel)
+	fig = plt.figure(facecolor="none", figsize=(5, 5))
+	ax = fig.add_subplot(projection="3d")
+	ax.set_axis_off()
+	normalize = Normalize(vmin=-5.5, vmax=5.0)
+	colors = colormap(normalize(mean(image, axis=0)))
+	xi, yi = meshgrid(arange(-1/2, M), arange(-1/2, M), indexing="ij")
+	zi = np.full_like(xi, 0)
+	ax.plot_surface(xi, yi, zi, rstride=1, cstride=1, facecolors=colors, shade=False)
+	z_edges = linspace(-6.2, 6.2, 201)
+	z_centers = (z_edges[0:-1] + z_edges[1:])/2
+	for i in range(0, image.shape[1], 10):
+		for j in range(0, image.shape[2], 10):
+			density, _ = histogram(image[:, i, j], bins=z_edges)
+			ax.plot(i + density/density.max()*10,
+			        full(z_centers.shape, j),
+			        z_centers - z_edges[0], color=f"C{random.randint(0, 10)}", linewidth=1.0, zorder=100 - j)
+	ax.set_xlim(0, M - 1)
+	ax.set_ylim(0, M - 1)
+	ax.set_zlim(0, z_edges[-1] - z_edges[0])
+	ax.view_init(30, -75)
+	fig.tight_layout()
+
 	# plot a few samples from the distribution
 	fig, axs = plt.subplots(
 		3, 3, figsize=(5, 5), facecolor="none",
@@ -56,28 +86,28 @@ def main():
 	)
 	axs = ravel(axs)
 	for i in range(9):
-		plot_image(axs[i], image[i], colormap=colormap, vmin=-5.5, vmax=5)
+		plot_image(axs[i], image[i])
 		axs[i].contour(image[i].T, colors="w", levels=[-2.5])
 	fig.tight_layout()
 
 	# plot a contour with uncertainty
-	fig, ax = plt.subplots(facecolor="none")
-	plot_image(ax, mean(image, axis=0), colormap=colormap, vmin=-5.5, vmax=5)
-	plot_contour(ax, image, color="w", level=-2.6)
+	fig, ax = plt.subplots(figsize=(5, 5), facecolor="none")
+	plot_image(ax, mean(image, axis=0))
+	plot_contour(ax, image, level=-2.6)
 	fig.tight_layout()
 
 	plt.show()
 
 
-def plot_image(ax, image, *, colormap, vmin, vmax):
-	ax.imshow(image.T, cmap=colormap, origin="lower", vmin=vmin, vmax=vmax)
+def plot_image(ax, image):
+	ax.imshow(image.T, cmap=colormap, origin="lower", vmin=-5.5, vmax=5)
 	ax.set_xlim(0, image.shape[0] - 1)
 	ax.set_ylim(0, image.shape[1] - 1)
 	ax.xaxis.set_visible(False)
 	ax.yaxis.set_visible(False)
 
 
-def plot_contour(ax, images, level, color, credibility=.90, opacity=1):
+def plot_contour(ax, images, level, credibility=.90, opacity=1):
 	# calculate the bounds of the contour band
 	outer_bound = measure.find_contours(quantile(images, 1/2 - credibility/2, axis=0), level)
 	inner_bound = measure.find_contours(quantile(images, 1/2 + credibility/2, axis=0), level)
@@ -103,7 +133,7 @@ def plot_contour(ax, images, level, color, credibility=.90, opacity=1):
 	if len(path) > 0:
 		commands, points = zip(*path)
 		ax.add_patch(PathPatch(Path(points, commands),
-		                       facecolor=color,
+		                       facecolor="white",
 		                       alpha=opacity,
 		                       edgecolor="none"))
 

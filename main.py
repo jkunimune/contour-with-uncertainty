@@ -2,6 +2,8 @@
 This work by Justin Kunimune is marked with CC0 1.0 Universal.
 To view a copy of this license, visit <https://creativecommons.org/publicdomain/zero/1.0>
 """
+import os
+
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.colors import Normalize
@@ -47,12 +49,25 @@ def main():
 	         depth*exp(-(hypot(x - x0, y - y0)/r)**power) -
 	         depth2*exp(-(hypot(x - x02, y - y02)/r2)**power) +
 	         base_noise + variant_noise)
+	lineout = image[:, :, M//2]
 
-	# plot the mean of the distribution
-	fig, ax = plt.subplots(facecolor="none")
-	plot_image(ax, mean(image, axis=0), vmin=-5.5, vmax=5.0, colormap=colormap)
-	plot_contour(ax, image, level=-2.6)
-	fig.tight_layout()
+	os.makedirs("figures", exist_ok=True)
+
+	# plot a bunch of overlapping lineouts
+	fig, ax = plt.subplots(facecolor="none", figsize=(6, 4))
+	fig.savefig("figures/lineouts.png")
+
+	# plot a histogram for every point on the lineout (not every single point)
+	fig, ax = plt.subplots(facecolor="none", figsize=(6, 4))
+	fig.savefig("figures/histograms 1d.png")
+
+	# plot the same thing but with credibility intervals highlighted
+	fig, ax = plt.subplots(facecolor="none", figsize=(6, 4))
+	fig.savefig("figures/histograms 1d with intervals.png")
+
+	# plot the lineout as a heatmap of cumulative probability
+	fig, ax = plt.subplots(facecolor="none", figsize=(6, 4))
+	fig.savefig("figures/probability density 1d.png")
 
 	# plot a histogram for every single pixel (not every single pixel)
 	fig = plt.figure(facecolor="none", figsize=(5, 5))
@@ -76,6 +91,7 @@ def main():
 	ax.set_zlim(0, z_edges[-1] - z_edges[0])
 	ax.view_init(30, -75)
 	fig.tight_layout()
+	fig.savefig("figures/histograms 2d.png")
 
 	# plot a few samples from the distribution
 	fig, axs = plt.subplots(
@@ -89,17 +105,39 @@ def main():
 		plot_image(axs[i], image[i], vmin=-5.5, vmax=5.0, colormap=colormap)
 		axs[i].contour(image[i].T, colors="w", levels=[-2.5])
 	fig.tight_layout()
+	fig.savefig("figures/samples.png")
+
+	# plot a bunch of overlapping contours
+	fig, ax = plt.subplots(facecolor="none", figsize=(5, 5))
+	fig.savefig("figures/contours.png")
 
 	# instead of plotting the mean of the distribution, plot the amount over a certain level
 	fig, ax = plt.subplots(figsize=(5, 5), facecolor="none")
 	plot_image(ax, mean(image > -2.5, axis=0), vmin=0, vmax=1, colormap="Greys_r")
 	fig.tight_layout()
+	fig.savefig("figures/probability density 2d.png")
 
 	# plot a contour with uncertainty
 	fig, ax = plt.subplots(figsize=(5, 5), facecolor="none")
 	plot_image(ax, mean(image, axis=0), vmin=-5.5, vmax=5.0, colormap=colormap)
 	plot_contour(ax, image, level=-2.6)
 	fig.tight_layout()
+	fig.savefig("figures/punchline.png")
+
+	# plot multiple contours with uncertainty
+	fig, ax = plt.subplots(figsize=(5, 5), facecolor="none")
+	plot_contour(ax, image, level=-4.1)
+	plot_contour(ax, image, level=-2.6)
+	plot_contour(ax, image, level=-1.1)
+	plot_contour(ax, image, level=0.4)
+	plot_contour(ax, image, level=1.9)
+	plot_contour(ax, image, level=3.4)
+	fig.tight_layout()
+	fig.savefig("figures/multiple bands.png")
+
+	# plot the contour level and contour band edges over the lineout band
+	fig, ax = plt.subplots(facecolor="none", figsize=(6, 4))
+	fig.savefig("figures/contour lineout.png")
 
 	plt.show()
 

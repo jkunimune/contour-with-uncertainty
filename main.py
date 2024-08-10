@@ -50,7 +50,7 @@ def main():
 
 	# plot the mean of the distribution
 	fig, ax = plt.subplots(facecolor="none")
-	plot_image(ax, mean(image, axis=0))
+	plot_image(ax, mean(image, axis=0), vmin=-5.5, vmax=5.0, colormap=colormap)
 	plot_contour(ax, image, level=-2.6)
 	fig.tight_layout()
 
@@ -86,21 +86,26 @@ def main():
 	)
 	axs = ravel(axs)
 	for i in range(9):
-		plot_image(axs[i], image[i])
+		plot_image(axs[i], image[i], vmin=-5.5, vmax=5.0, colormap=colormap)
 		axs[i].contour(image[i].T, colors="w", levels=[-2.5])
+	fig.tight_layout()
+
+	# instead of plotting the mean of the distribution, plot the amount over a certain level
+	fig, ax = plt.subplots(figsize=(5, 5), facecolor="none")
+	plot_image(ax, mean(image > -2.5, axis=0), vmin=0, vmax=1, colormap="Greys_r")
 	fig.tight_layout()
 
 	# plot a contour with uncertainty
 	fig, ax = plt.subplots(figsize=(5, 5), facecolor="none")
-	plot_image(ax, mean(image, axis=0))
+	plot_image(ax, mean(image, axis=0), vmin=-5.5, vmax=5.0, colormap=colormap)
 	plot_contour(ax, image, level=-2.6)
 	fig.tight_layout()
 
 	plt.show()
 
 
-def plot_image(ax, image):
-	ax.imshow(image.T, cmap=colormap, origin="lower", vmin=-5.5, vmax=5)
+def plot_image(ax, image, *, vmin, vmax, colormap):
+	ax.imshow(image.T, cmap=colormap, origin="lower", vmin=vmin, vmax=vmax)
 	ax.set_xlim(0, image.shape[0] - 1)
 	ax.set_ylim(0, image.shape[1] - 1)
 	ax.xaxis.set_visible(False)

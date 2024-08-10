@@ -13,7 +13,8 @@ from numpy import linspace, hypot, exp, random, newaxis, ravel, mean, quantile, 
 	zeros, arange, meshgrid, stack, histogram, full
 from skimage import measure
 
-from colormap import colormap
+from height_colormap import height_colormap
+from probability_colormap import probability_colormap
 
 rng = random.default_rng(0)
 
@@ -42,23 +43,37 @@ def main():
 	])
 
 	x = y = linspace(-1, 1, M)
-	x = x[newaxis, :, newaxis]
-	y = y[newaxis, newaxis, :]
+	X = x[newaxis, :, newaxis]
+	Y = y[newaxis, newaxis, :]
+	z_edges = linspace(-5.2, 7.2, 201)
+	z_centers = (z_edges[0:-1] + z_edges[1:])/2
 
-	image = (a*x + b*y -
-	         depth*exp(-(hypot(x - x0, y - y0)/r)**power) -
-	         depth2*exp(-(hypot(x - x02, y - y02)/r2)**power) +
-	         base_noise + variant_noise)
+	image = (a*X + b*Y -
+	         depth*exp(-(hypot(X - x0, Y - y0)/r)**power) -
+	         depth2*exp(-(hypot(X - x02, Y - y02)/r2)**power) +
+	         base_noise + variant_noise + 1)
 	lineout = image[:, :, M//2]
 
 	os.makedirs("figures", exist_ok=True)
 
 	# plot a bunch of overlapping lineouts
 	fig, ax = plt.subplots(facecolor="none", figsize=(6, 4))
+	ax.plot(x, lineout[:9, :].T, zorder=10)
+	ax.set_xlim(x[0], x[-1])
+	ax.set_ylim(-5, 5)
+	ax.grid()
+	fig.tight_layout()
 	fig.savefig("figures/lineouts.png")
 
 	# plot a histogram for every point on the lineout (not every single point)
 	fig, ax = plt.subplots(facecolor="none", figsize=(6, 4))
+	for i in range(0, M, 5):
+		density, _ = histogram(lineout[:, i], bins=z_edges)
+		ax.plot(x[i] + density/density.mean()*0.004, z_centers, linewidth=1.0, zorder=100 - i)
+	ax.set_xlim(x[0] - 0.05, x[-1] + 0.2)
+	ax.set_ylim(-5, 5)
+	ax.grid(axis="y")
+	fig.tight_layout()
 	fig.savefig("figures/histograms 1d.png")
 
 	# plot the same thing but with credibility intervals highlighted
@@ -67,19 +82,24 @@ def main():
 
 	# plot the lineout as a heatmap of cumulative probability
 	fig, ax = plt.subplots(facecolor="none", figsize=(6, 4))
+	cdf = mean(z_centers[newaxis, newaxis, :] > lineout[:, :, newaxis], axis=0)
+	plot_image(ax, cdf, vmin=0, vmax=1, colormap=probability_colormap,
+	           extent=(1.5*x[0] - 0.5*x[1], 1.5*x[-1] - 0.5*x[-2], z_edges[0], z_edges[-1]),
+	           interpolation="bilinear", aspect="auto")
+	ax.set_xlim(x[0], x[-1])
+	ax.set_ylim(-5, 5)
+	fig.tight_layout()
 	fig.savefig("figures/probability density 1d.png")
 
 	# plot a histogram for every single pixel (not every single pixel)
 	fig = plt.figure(facecolor="none", figsize=(5, 5))
 	ax = fig.add_subplot(projection="3d")
 	ax.set_axis_off()
-	normalize = Normalize(vmin=-5.5, vmax=5.0)
-	colors = colormap(normalize(mean(image, axis=0)))
-	xi, yi = meshgrid(arange(-1/2, M), arange(-1/2, M), indexing="ij")
+	normalize = Normalize(vmin=-4.5, vmax=6.0)
+	colors = height_colormap(normalize(mean(image, axis=0)))
+	xi, yi = meshgrid(M, M, indexing="ij")
 	zi = np.full_like(xi, 0)
 	ax.plot_surface(xi, yi, zi, rstride=1, cstride=1, facecolors=colors, shade=False)
-	z_edges = linspace(-6.2, 6.2, 201)
-	z_centers = (z_edges[0:-1] + z_edges[1:])/2
 	for i in range(0, image.shape[1], 10):
 		for j in range(0, image.shape[2], 10):
 			density, _ = histogram(image[:, i, j], bins=z_edges)
@@ -102,48 +122,49 @@ def main():
 	)
 	axs = ravel(axs)
 	for i in range(9):
-		plot_image(axs[i], image[i], vmin=-5.5, vmax=5.0, colormap=colormap)
-		axs[i].contour(image[i].T, colors="w", levels=[-2.5])
+		plot_image(axs[i], image[i], vmin=-4.5, vmax=6.0, colormap=height_colormap)
+		axs[i].contour(image[i].T, colors="w", levels=[-1.5])
 	fig.tight_layout()
 	fig.savefig("figures/samples.png")
 
 	# plot a bunch of overlapping contours
 	fig, ax = plt.subplots(facecolor="none", figsize=(5, 5))
+	fig.tight_layout()
 	fig.savefig("figures/contours.png")
 
 	# instead of plotting the mean of the distribution, plot the amount over a certain level
 	fig, ax = plt.subplots(figsize=(5, 5), facecolor="none")
-	plot_image(ax, mean(image > -2.5, axis=0), vmin=0, vmax=1, colormap="Greys_r")
+	plot_image(ax, mean(image > -1.6, axis=0), vmin=0, vmax=1, colormap=probability_colormap)
 	fig.tight_layout()
 	fig.savefig("figures/probability density 2d.png")
 
 	# plot a contour with uncertainty
 	fig, ax = plt.subplots(figsize=(5, 5), facecolor="none")
-	plot_image(ax, mean(image, axis=0), vmin=-5.5, vmax=5.0, colormap=colormap)
-	plot_contour(ax, image, level=-2.6)
+	plot_image(ax, mean(image, axis=0), vmin=-4.5, vmax=6.0, colormap=height_colormap)
+	plot_contour(ax, image, level=-1.5)
 	fig.tight_layout()
 	fig.savefig("figures/punchline.png")
 
 	# plot multiple contours with uncertainty
 	fig, ax = plt.subplots(figsize=(5, 5), facecolor="none")
-	plot_contour(ax, image, level=-4.1)
-	plot_contour(ax, image, level=-2.6)
-	plot_contour(ax, image, level=-1.1)
-	plot_contour(ax, image, level=0.4)
-	plot_contour(ax, image, level=1.9)
-	plot_contour(ax, image, level=3.4)
+	plot_contour(ax, image, level=-3.0)
+	plot_contour(ax, image, level=-1.5)
+	plot_contour(ax, image, level=0.0)
+	plot_contour(ax, image, level=1.5)
+	plot_contour(ax, image, level=3.0)
 	fig.tight_layout()
 	fig.savefig("figures/multiple bands.png")
 
 	# plot the contour level and contour band edges over the lineout band
 	fig, ax = plt.subplots(facecolor="none", figsize=(6, 4))
+	fig.tight_layout()
 	fig.savefig("figures/contour lineout.png")
 
 	plt.show()
 
 
-def plot_image(ax, image, *, vmin, vmax, colormap):
-	ax.imshow(image.T, cmap=colormap, origin="lower", vmin=vmin, vmax=vmax)
+def plot_image(ax, image, *, vmin, vmax, colormap, **kwargs):
+	ax.imshow(image.T, cmap=colormap, origin="lower", vmin=vmin, vmax=vmax, **kwargs)
 	ax.set_xlim(0, image.shape[0] - 1)
 	ax.set_ylim(0, image.shape[1] - 1)
 	ax.xaxis.set_visible(False)

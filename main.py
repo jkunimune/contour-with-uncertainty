@@ -10,13 +10,15 @@ from matplotlib.colors import Normalize
 from matplotlib.patches import PathPatch
 from matplotlib.path import Path
 from numpy import linspace, hypot, exp, random, newaxis, ravel, mean, quantile, pi, minimum, floor, cos, sin, sqrt, \
-	zeros, arange, meshgrid, stack, histogram, full
+	zeros, arange, meshgrid, stack, histogram, full, concatenate, interp
 from skimage import measure
 
 from height_colormap import height_colormap
 from probability_colormap import probability_colormap
 
 rng = random.default_rng(0)
+
+rainbow_colormap = plt.get_cmap("turbo")
 
 
 def main():
@@ -62,23 +64,32 @@ def main():
 	ax.set_xlim(x[0], x[-1])
 	ax.set_ylim(-5, 5)
 	ax.grid()
-	fig.tight_layout()
-	fig.savefig("figures/lineouts.png")
+	save_plot(fig, [ax], "figures/lineouts.png")
 
 	# plot a histogram for every point on the lineout (not every single point)
-	fig, ax = plt.subplots(facecolor="none", figsize=(6, 4))
+	z05, z95 = quantile(lineout, [.05, .95], axis=0)
+	fig_empty, ax_empty = plt.subplots(facecolor="none", figsize=(6, 4))
+	fig_full, ax_full = plt.subplots(facecolor="none", figsize=(6, 4))
 	for i in range(0, M, 5):
 		density, _ = histogram(lineout[:, i], bins=z_edges)
-		ax.plot(x[i] + density/density.mean()*0.004, z_centers, linewidth=1.0, zorder=100 - i)
-	ax.set_xlim(x[0] - 0.05, x[-1] + 0.2)
-	ax.set_ylim(-5, 5)
-	ax.grid(axis="y")
-	fig.tight_layout()
-	fig.savefig("figures/histograms 1d.png")
-
-	# plot the same thing but with credibility intervals highlighted
-	fig, ax = plt.subplots(facecolor="none", figsize=(6, 4))
-	fig.savefig("figures/histograms 1d with intervals.png")
+		density = density/density.mean()*0.004
+		ax_empty.plot(x[i] + density, z_centers,
+		              linewidth=1.0, zorder=100 - i)
+		ax_empty.fill_betweenx(z_centers, x[i], x[i] + density,
+		                       zorder=100.0 - i, color="white")
+		ax_full.plot(x[i] + density, z_centers,
+		             linewidth=1.0, zorder=100.2 - i, color=f"C{i//5}")
+		z_interval = concatenate([[z05[i]], z_centers[(z_centers > z05[i]) & (z_centers < z95[i])], [z95[i]]])
+		ax_full.fill_betweenx(z_interval, x[i], x[i] + interp(z_interval, z_centers, density),
+		                      zorder=100.1 - i, color=f"#bbb")
+	ax_full.plot(x, z05, linewidth=1.0, color="k")
+	ax_full.plot(x, z95, linewidth=1.0, color="k")
+	for ax in [ax_empty, ax_full]:
+		ax.set_xlim(x[0] - 0.05, x[-1] + 0.2)
+		ax.set_ylim(-5, 5)
+	ax_empty.grid(axis="y")
+	save_plot(fig_empty, [ax_empty], "figures/histograms 1d.png")
+	save_plot(fig_full, [ax_full], "figures/histograms 1d with intervals.png")
 
 	# plot the lineout as a heatmap of cumulative probability
 	fig, ax = plt.subplots(facecolor="none", figsize=(6, 4))
@@ -86,10 +97,11 @@ def main():
 	plot_image(ax, cdf, vmin=0, vmax=1, colormap=probability_colormap,
 	           extent=(1.5*x[0] - 0.5*x[1], 1.5*x[-1] - 0.5*x[-2], z_edges[0], z_edges[-1]),
 	           interpolation="bilinear", aspect="auto")
+	contours = plt.contour(x, z_centers, cdf.T, levels=[.05, .95], colors=["black", "black"])
+	ax.clabel(contours, inline=True, fontsize=10)
 	ax.set_xlim(x[0], x[-1])
 	ax.set_ylim(-5, 5)
-	fig.tight_layout()
-	fig.savefig("figures/probability density 1d.png")
+	save_plot(fig, [ax], "figures/probability density 1d.png")
 
 	# plot a histogram for every single pixel (not every single pixel)
 	fig = plt.figure(facecolor="none", figsize=(5, 5))
@@ -110,8 +122,7 @@ def main():
 	ax.set_ylim(0, M - 1)
 	ax.set_zlim(0, z_edges[-1] - z_edges[0])
 	ax.view_init(30, -75)
-	fig.tight_layout()
-	fig.savefig("figures/histograms 2d.png")
+	save_plot(fig, [ax], "figures/histograms 2d.png")
 
 	# plot a few samples from the distribution
 	fig, axs = plt.subplots(
@@ -123,55 +134,63 @@ def main():
 	axs = ravel(axs)
 	for i in range(9):
 		plot_image(axs[i], image[i], vmin=-4.5, vmax=6.0, colormap=height_colormap)
-		axs[i].contour(image[i].T, colors="w", levels=[-1.5])
-	fig.tight_layout()
-	fig.savefig("figures/samples.png")
+	save_plot(fig, axs, "figures/samples.png")
 
 	# plot a bunch of overlapping contours
 	fig, ax = plt.subplots(facecolor="none", figsize=(5, 5))
-	fig.tight_layout()
-	fig.savefig("figures/contours.png")
+	plot_image(ax, mean(image, axis=0), vmin=-4.5, vmax=6.0, colormap=height_colormap)
+	for i in range(9):
+		ax.contour(x, y, image[i, :, :], colors="white", linewidths=1.0)
+	save_plot(fig, [ax], "figures/contours.png")
+	plt.show()
 
 	# instead of plotting the mean of the distribution, plot the amount over a certain level
 	fig, ax = plt.subplots(figsize=(5, 5), facecolor="none")
 	plot_image(ax, mean(image > -1.6, axis=0), vmin=0, vmax=1, colormap=probability_colormap)
-	fig.tight_layout()
-	fig.savefig("figures/probability density 2d.png")
+	save_plot(fig, [ax], "figures/probability density 2d.png")
 
 	# plot a contour with uncertainty
 	fig, ax = plt.subplots(figsize=(5, 5), facecolor="none")
 	plot_image(ax, mean(image, axis=0), vmin=-4.5, vmax=6.0, colormap=height_colormap)
 	plot_contour(ax, image, level=-1.5)
-	fig.tight_layout()
-	fig.savefig("figures/punchline.png")
+	save_plot(fig, [ax], "figures/punchline.png")
 
 	# plot multiple contours with uncertainty
 	fig, ax = plt.subplots(figsize=(5, 5), facecolor="none")
-	plot_contour(ax, image, level=-3.0)
-	plot_contour(ax, image, level=-1.5)
-	plot_contour(ax, image, level=0.0)
-	plot_contour(ax, image, level=1.5)
-	plot_contour(ax, image, level=3.0)
-	fig.tight_layout()
-	fig.savefig("figures/multiple bands.png")
+	plot_contour(ax, image, level=-3.0, color=rainbow_colormap(0))
+	plot_contour(ax, image, level=-1.5, color=rainbow_colormap(.25))
+	plot_contour(ax, image, level=0.0, color=rainbow_colormap(.50))
+	plot_contour(ax, image, level=1.5, color=rainbow_colormap(.75))
+	plot_contour(ax, image, level=3.0, color=rainbow_colormap(1))
+	save_plot(fig, [ax], "figures/multiple bands.png")
 
 	# plot the contour level and contour band edges over the lineout band
 	fig, ax = plt.subplots(facecolor="none", figsize=(6, 4))
-	fig.tight_layout()
-	fig.savefig("figures/contour lineout.png")
+	ax.set_xlim(x[0], x[-1])
+	ax.set_ylim(-5, 5)
+	ax_empty.grid(axis="y")
+	fig_empty.tight_layout()
+	save_plot(fig, [ax], "figures/contour lineout.png")
 
 	plt.show()
+
+
+def save_plot(fig, axs, filename):
+	for ax in axs:
+		ax.xaxis.set_visible(False)
+		ax.yaxis.set_visible(False)
+	if len(axs) == 1:
+		fig.tight_layout()
+	fig.savefig(filename, dpi=300)
 
 
 def plot_image(ax, image, *, vmin, vmax, colormap, **kwargs):
 	ax.imshow(image.T, cmap=colormap, origin="lower", vmin=vmin, vmax=vmax, **kwargs)
 	ax.set_xlim(0, image.shape[0] - 1)
 	ax.set_ylim(0, image.shape[1] - 1)
-	ax.xaxis.set_visible(False)
-	ax.yaxis.set_visible(False)
 
 
-def plot_contour(ax, images, level, credibility=.90, opacity=1):
+def plot_contour(ax, images, level, credibility=.90, opacity=1, color="white"):
 	# calculate the bounds of the contour band
 	outer_bound = measure.find_contours(quantile(images, 1/2 - credibility/2, axis=0), level)
 	inner_bound = measure.find_contours(quantile(images, 1/2 + credibility/2, axis=0), level)
@@ -197,7 +216,7 @@ def plot_contour(ax, images, level, credibility=.90, opacity=1):
 	if len(path) > 0:
 		commands, points = zip(*path)
 		ax.add_patch(PathPatch(Path(points, commands),
-		                       facecolor="white",
+		                       facecolor=color,
 		                       alpha=opacity,
 		                       edgecolor="none"))
 

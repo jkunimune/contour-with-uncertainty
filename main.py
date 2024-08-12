@@ -79,16 +79,16 @@ def main():
 	fig_full, ax_full = plt.subplots(facecolor="none", figsize=(6, 4))
 	for i in range(0, M, 5):
 		density, _ = histogram(lineout[:, i], bins=z_edges)
-		density = density/density.mean()*0.004
+		density = density/density.mean()*0.005
 		ax_empty.plot(x[i] + density, z_centers,
-		              linewidth=1.0, zorder=1.01 - i*.1)
+		              linewidth=1.2, zorder=1.01 - i*.1)
 		ax_empty.fill_betweenx(z_centers, x[i], x[i] + density,
 		                       zorder=1.00 - i*.1, color="white")
 		ax_full.plot(x[i] + density, z_centers,
-		             linewidth=1.0, zorder=1.02 - i*.1, color=f"C{i//5}")
+		             linewidth=1.2, zorder=1.02 - i*.1, color=f"C{i//5}")
 		z_interval = concatenate([[z05[i]], z_centers[(z_centers > z05[i]) & (z_centers < z95[i])], [z95[i]]])
 		ax_full.fill_betweenx(z_interval, x[i], x[i] + interp(z_interval, z_centers, density),
-		                      zorder=1.01 - i*.1, color=f"#aaa")
+		                      zorder=1.01 - i*.1, color=rainbow_colormap(.2))
 	ax_full.plot(x, z05, linewidth=1.0, color="k", zorder=-100)
 	ax_full.plot(x, z95, linewidth=1.0, color="k", zorder=-100)
 	for ax in [ax_empty, ax_full]:
@@ -190,7 +190,7 @@ def main():
 			intersections.append(x_crossing)
 	intersections = sorted(intersections)
 	for i in range(0, len(intersections) - 1, 2):
-		ax.axvspan(intersections[i], intersections[i + 1], color="#aaa")
+		ax.axvspan(intersections[i], intersections[i + 1], color=rainbow_colormap(.2))
 	ax.set_xlim(x[0], x[-1])
 	ax.set_ylim(-5, 5)
 	save_plot(fig, [ax], "figures/contour lineout.png")

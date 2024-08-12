@@ -67,7 +67,7 @@ def main():
 
 	# plot a bunch of overlapping lineouts
 	fig, ax = plt.subplots(facecolor="none", figsize=(6, 4))
-	ax.plot(x, lineout[:9, :].T, zorder=1)
+	ax.plot(x, lineout[:9, :].T, zorder=2)
 	ax.set_xlim(x[0], x[-1])
 	ax.set_ylim(-5, 5)
 	ax.grid()
@@ -94,7 +94,6 @@ def main():
 	for ax in [ax_empty, ax_full]:
 		ax.set_xlim(x[0] - 0.05, x[-1] + 0.2)
 		ax.set_ylim(-5, 5)
-	ax_empty.grid(axis="y")
 	save_plot(fig_empty, [ax_empty], "figures/histograms 1d.png")
 	save_plot(fig_full, [ax_full], "figures/histograms 1d with intervals.png")
 
@@ -194,7 +193,6 @@ def main():
 		ax.axvspan(intersections[i], intersections[i + 1], color="#aaa")
 	ax.set_xlim(x[0], x[-1])
 	ax.set_ylim(-5, 5)
-	ax.grid()
 	save_plot(fig, [ax], "figures/contour lineout.png")
 
 	plt.show()
@@ -202,8 +200,10 @@ def main():
 
 def save_plot(fig, axs, filename):
 	for ax in axs:
-		ax.xaxis.set_visible(False)
-		ax.yaxis.set_visible(False)
+		ax.xaxis.set_ticklabels([])
+		ax.xaxis.set_ticks_position("none")
+		ax.yaxis.set_ticklabels([])
+		ax.yaxis.set_ticks_position("none")
 	# if len(axs) == 1:
 	fig.tight_layout()
 	fig.savefig(filename, dpi=300)

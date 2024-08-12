@@ -117,7 +117,7 @@ def main():
 	ax.set_axis_off()
 	normalize = Normalize(vmin=-4.5, vmax=6.0)
 	colors = height_colormap(normalize(mean(image, axis=0)))
-	xi, yi = meshgrid(M, M, indexing="ij")
+	xi, yi = meshgrid(arange(M), arange(M), indexing="ij")
 	zi = np.full_like(xi, 0)
 	ax.plot_surface(xi, yi, zi, rstride=1, cstride=1, facecolors=colors, shade=False)
 	for i in range(0, image.shape[1], 10):

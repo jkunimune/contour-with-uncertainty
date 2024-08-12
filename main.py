@@ -20,7 +20,7 @@ rng = random.default_rng(0)
 
 rainbow_colormap = plt.get_cmap("turbo")
 
-plt.rcParams["font.size"] = 12
+plt.rcParams["font.size"] = 14
 
 
 def main():
@@ -34,14 +34,14 @@ def main():
 	x0 = rng.normal(-.3, .02, (N, 1, 1))
 	y0 = rng.normal(-.1, .02, (N, 1, 1))
 	power = 3
-	r2 = rng.normal(.3, .01, (N, 1, 1))
+	r2 = rng.normal(.2, .01, (N, 1, 1))
 	depth2 = rng.uniform(0, 2**(1/2), (N, 1, 1))**2
-	x02 = rng.normal(-.2, .02, (N, 1, 1))
-	y02 = rng.normal(.5, .02, (N, 1, 1))
+	x02 = rng.normal(-.5, .02, (N, 1, 1))
+	y02 = rng.normal(.2, .02, (N, 1, 1))
 	r3 = rng.normal(.2, .01, (N, 1, 1))
 	depth3 = rng.uniform(0, 1**(1/2), (N, 1, 1))**2
 	x03 = rng.normal(.2, .02, (N, 1, 1))
-	y03 = rng.normal(-.4, .02, (N, 1, 1))
+	y03 = rng.normal(-.5, .02, (N, 1, 1))
 
 	base_noise = 0.3*perlin_noise((1, M, M), [
 		(1, 2**-0), (2, 2**-0), (4, 2**-2), (8, 2**-4), (16, 2**-6), (32, 2**-8),
@@ -56,11 +56,11 @@ def main():
 	z_edges = linspace(-5.2, 7.2, 201)
 	z_centers = (z_edges[0:-1] + z_edges[1:])/2
 
-	image = (a*X + b*Y -
-	         depth*exp(-(hypot(X - x0, Y - y0)/r)**power) -
-	         depth2*exp(-(hypot(X - x02, Y - y02)/r2)**power) +
-	         depth3*exp(-(hypot(X - x03, Y - y03)/r3)**power) +
-	         base_noise + variant_noise + 1)
+	image = (a*(X - .05) + b*Y -
+	         depth*exp(-(hypot(X - .05 - x0, Y - y0)/r)**power) -
+	         depth2*exp(-(hypot(X - .05 - x02, Y - y02)/r2)**power) +
+	         depth3*exp(-(hypot(X - .05 - x03, Y - y03)/r3)**power) +
+	         base_noise + variant_noise + 1.1)
 	lineout = image[:, :, M//2]
 
 	os.makedirs("figures", exist_ok=True)
@@ -105,8 +105,8 @@ def main():
 	                     interpolation="bilinear", aspect="auto")
 	ax.contour(x, z_centers, cdf.T, levels=[5, 95], colors=["black", "black"])
 	plt.colorbar(picture, ax=ax, format=lambda x, pos: f"{x:.0f}%").set_label("Probability")
-	ax.text(0, -1, "5%")
-	ax.text(0, 1, "95%")
+	ax.text(0.33, -4.0, "5%")
+	ax.text(0.11, -2.7, "95%")
 	ax.set_xlim(x[0], x[-1])
 	ax.set_ylim(-5, 5)
 	save_plot(fig, [ax], "figures/probability density 1d.png")
@@ -148,7 +148,7 @@ def main():
 	fig, ax = plt.subplots(facecolor="none", figsize=(5, 5))
 	plot_image(ax, mean(image, axis=0), vmin=-4.5, vmax=6.0, colormap=height_colormap)
 	for i in range(9):
-		ax.contour(image[i, :, :].T, levels=[-1.5], colors="white", linewidths=1.0)
+		ax.contour(image[i, :, :].T, levels=[-1.5], colors="white", linewidths=1.0, linestyles=["solid"])
 	save_plot(fig, [ax], "figures/contours.png")
 
 	# instead of plotting the mean of the distribution, plot the amount over a certain level

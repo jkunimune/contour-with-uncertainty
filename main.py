@@ -19,6 +19,7 @@ from probability_colormap import probability_colormap
 rng = random.default_rng(0)
 
 rainbow_colormap = plt.get_cmap("turbo")
+blue = rainbow_colormap(.2)
 
 plt.rcParams["font.size"] = 14
 
@@ -88,7 +89,7 @@ def main():
 		             linewidth=1.2, zorder=1.02 - i*.1, color=f"C{i//5}")
 		z_interval = concatenate([[z05[i]], z_centers[(z_centers > z05[i]) & (z_centers < z95[i])], [z95[i]]])
 		ax_full.fill_betweenx(z_interval, x[i], x[i] + interp(z_interval, z_centers, density),
-		                      zorder=1.01 - i*.1, color=rainbow_colormap(.2))
+		                      zorder=1.01 - i*.1, color=blue)
 	ax_full.plot(x, z05, linewidth=1.0, color="k", zorder=-100)
 	ax_full.plot(x, z95, linewidth=1.0, color="k", zorder=-100)
 	for ax in [ax_empty, ax_full]:
@@ -103,15 +104,25 @@ def main():
 	picture = plot_image(ax, cdf, vmin=0, vmax=100, colormap=probability_colormap,
 	                     extent=(1.5*x[0] - 0.5*x[1], 1.5*x[-1] - 0.5*x[-2], z_edges[0], z_edges[-1]),
 	                     interpolation="bilinear", aspect="auto")
-	ax.contour(x, z_centers, cdf.T, levels=[5, 95], colors=["black", "black"])
-	plt.colorbar(picture, ax=ax, format=lambda x, pos: f"{x:.0f}%").set_label("Probability")
+	ax.contour(x, z_centers, cdf.T, levels=[5, 95], colors=["black", "black"], linewidths=1.0)
+	colorbar = plt.colorbar(picture, ax=ax, format=lambda x, pos: f"{x:.0f}%")
+	colorbar.set_label("Probability")
+	colorbar.set_ticks([0, 5, 25, 50, 75, 95, 100])
 	ax.text(0.33, -4.0, "5%")
 	ax.text(0.11, -2.7, "95%")
 	ax.set_xlim(x[0], x[-1])
 	ax.set_ylim(-5, 5)
-	save_plot(fig, [ax], "figures/probability density 1d.png")
+	save_plot(fig, [ax], "figures/cumulative probability 1d.png")
 
-	# plot a histogram for every single pixel (not every single pixel)
+	# plot the lineout band
+	fig, ax = plt.subplots(facecolor="none", figsize=(6, 4))
+	ax.fill_between(x, z05, z95, color=blue, zorder=2)
+	ax.set_xlim(x[0], x[-1])
+	ax.set_ylim(-5, 5)
+	ax.grid()
+	save_plot(fig, [ax], "figures/lineout band.png")
+
+# plot a histogram for every single pixel (not every single pixel)
 	fig = plt.figure(facecolor="none", figsize=(5, 5))
 	ax = fig.add_subplot(projection="3d")
 	ax.set_axis_off()
@@ -148,13 +159,13 @@ def main():
 	fig, ax = plt.subplots(facecolor="none", figsize=(5, 5))
 	plot_image(ax, mean(image, axis=0), vmin=-4.5, vmax=6.0, colormap=height_colormap)
 	for i in range(9):
-		ax.contour(image[i, :, :].T, levels=[-1.5], colors="white", linewidths=1.0, linestyles=["solid"])
+		ax.contour(image[i, :, :].T, levels=[-1.5], colors=[blue], linewidths=1.0, linestyles=["solid"])
 	save_plot(fig, [ax], "figures/contours.png")
 
 	# instead of plotting the mean of the distribution, plot the amount over a certain level
 	fig, ax = plt.subplots(figsize=(5, 5), facecolor="none")
 	plot_image(ax, mean(image > -1.6, axis=0), vmin=0, vmax=1, colormap=probability_colormap, interpolation="bilinear")
-	save_plot(fig, [ax], "figures/probability density 2d.png")
+	save_plot(fig, [ax], "figures/cumulative probability 2d.png")
 
 	# plot a contour with uncertainty
 	fig, ax = plt.subplots(figsize=(5, 5), facecolor="none")
@@ -180,7 +191,7 @@ def main():
 	                     extent=(1.5*x[0] - 0.5*x[1], 1.5*x[-1] - 0.5*x[-2], z_edges[0], z_edges[-1]),
 	                     interpolation="bilinear", aspect="auto")
 	plt.colorbar(picture, ax=ax, format=lambda x, pos: f"{x:.0f}%").set_label("Probability")
-	ax.contour(x, z_centers, cdf.T, levels=[5, 95], colors=["black", "black"])
+	ax.contour(x, z_centers, cdf.T, levels=[5, 95], colors=["black", "black"], linewidths=1.0)
 	ax.axhline(-1.5, color="black", linestyle="dashed")
 	intersections = []
 	for z in [z05, z95]:
@@ -190,7 +201,7 @@ def main():
 			intersections.append(x_crossing)
 	intersections = sorted(intersections)
 	for i in range(0, len(intersections) - 1, 2):
-		ax.axvspan(intersections[i], intersections[i + 1], color=rainbow_colormap(.2))
+		ax.axvspan(intersections[i], intersections[i + 1], color=blue)
 	ax.set_xlim(x[0], x[-1])
 	ax.set_ylim(-5, 5)
 	save_plot(fig, [ax], "figures/contour lineout.png")
@@ -216,7 +227,7 @@ def plot_image(ax, image, *, vmin, vmax, colormap, **kwargs):
 	return thing
 
 
-def plot_contour(ax, images, level, credibility=.90, color="white"):
+def plot_contour(ax, images, level, credibility=.90, color=blue):
 	# calculate the bounds of the contour band
 	outer_bound = measure.find_contours(quantile(images, 1/2 - credibility/2, axis=0), level)
 	inner_bound = measure.find_contours(quantile(images, 1/2 + credibility/2, axis=0), level)
